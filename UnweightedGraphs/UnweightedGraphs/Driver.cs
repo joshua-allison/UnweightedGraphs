@@ -51,8 +51,8 @@ namespace GraphsDriver
             // Debug1(graph);
 
             BaseTest(graph);
-            ConnectTest(graph);
-            MinTreeTest(graph);
+            //ConnectTest(graph);
+            //MinTreeTest(graph);
 
             Console.Write("Press Enter to close.");
             Console.Read();
