@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
@@ -26,9 +27,13 @@ namespace DGraphClasses
                 if (NodeList[index].Name == name)
                     return index;
             return -1;
-        }  
-        private void ResetVisited() => throw new NotImplementedException(); // used to reset all visited flags
-
+        }
+        // used to reset all visited flags
+        private void ResetVisited()
+        {
+            for (int i = 0; i < NumNodes; i++)
+                NodeList[i].Visited = false;
+        }
         //public methods
         /// <summary> DGraph constructor; intializes all instance members. </summary>
         /// <param name="size"> The number of nodes in the graph. </param>
@@ -71,17 +76,14 @@ namespace DGraphClasses
             int endIndex = FindNode(ends);
             if (startIndex == -1 || endIndex == -1) return false;
 
-            // set both links in the adjacency matrix
             AdjacencyMatrix[startIndex, endIndex] = true;
-            //AdjacencyMatrix[endIndex, startIndex] = true;
-
-            // create two new edges (one for each direction)
-            // add one to each node’s adjacency list
             Edge startEnd = new();
             startEnd.EndIndex = endIndex;
             startEnd.Next = NodeList[startIndex].Adjacency;
             NodeList[startIndex].Adjacency = startEnd;
 
+            /// Uncomment the following code to make the graph non-directed.
+            //AdjacencyMatrix[endIndex, startIndex] = true;
             //Edge endStart = new();
             //endStart.EndIndex = startIndex;
             //endStart.Next = NodeList[endIndex].Adjacency;
@@ -129,12 +131,15 @@ namespace DGraphClasses
         public string DisplayMatrix()
         {
             string buffer = "   "; // declare the return value
-            
+
             // print the table header
+            for (int g = 0; g < NumNodes; g++)
+                buffer += g + "  ";
+            buffer += "<= 'ListNodes' index (for debugging)\n" + "   ";
             for (int h = 0; h < NumNodes; h++)
                 buffer += NodeList[h].Name + "  ";
-            buffer += "\n" + "  ";
-            for (int i = 0; i < NumNodes * 3 - 1; i++)
+            buffer += "\n" + "  .";
+            for (int i = 0; i < NumNodes * 3 - 2; i++)
                 buffer += "_";
             buffer += "\n";
             
@@ -157,30 +162,107 @@ namespace DGraphClasses
             return buffer;
         }
 
-        //TODO: BreadthFirst Summary
-        /// <summary>  </summary>
+        /// <summary> Perform a FIFO connectivity search. </summary>
         /// <param name="node"> The node from which to start the breadth first FIFO search patttern. </param>
         /// <returns> A string representing the nodes that can be reached by the input, in the order that they are reached. The string also specifyies which nodes can't be reached. </returns>
         /// <accreditation> This method is based of "Breadth First Search or BFS for a Graph (C#)" found at https://www.geeksforgeeks.org/breadth-first-search-or-bfs-for-a-graph/ </accreditation>
-        public string BreadthFirst(char s)
+        public string BreadthFirst(char name)
         {
-            //int root = IndexOf(NodeList, s)
+            ResetVisited();
+            bool firstNode = true;
+            string buffer = "";
+            Node root = NodeList[FindNode(name)];
 
-            bool[] visited = new bool[NumNodes]; // Keep track of visited nodes
-            for (int i = 0; i < NumNodes; i++) 
-                visited[i] = false; // default: not visited
+            Queue<Node> Q = new(NumNodes);
+            // Mark the root as visited and enqueue it
+            root.Visited = true;
+            Q.Enqueue(root);
 
-            Queue<int> queue = new(); 
-
-            visited[s] = true;
-            queue.Enqueue(s);
-
-            while (queue.Count != 0)
+            while (Q.Count != 0)
             {
+                // Dequeue a vertex from queue and print it
+                Node node = Q.First();
+                buffer += node.Name.ToString();
+                if (firstNode) buffer += ":";
+                buffer += " ";
+                Q.Dequeue();
+                if (firstNode) firstNode = false;
+
+                // Get all adjacent vertices of the dequeued node
+                Edge edge = node.Adjacency;
+                
+                while (edge is not null)
+                {
+                    // If a adjacent has not been visited, then mark it visited and enqueue it
+                    Node vertex = NodeList[edge.EndIndex];
+                    if (!vertex.Visited)
+                    {
+                        Q.Enqueue(vertex);
+                        NodeList[edge.EndIndex].Visited = true;
+                    }
+                    edge = edge.Next;
+                }
             }
-            return "";
+
+            //special case:  unreachable nodes
+            buffer += "with ";
+            foreach (var node in NodeList)
+            {
+                if (node is not null)
+                    if (!buffer.Contains(node.Name))
+                        buffer += node.Name + " ";
+            }
+            buffer += "unreachable";
+
+            return buffer;
         }
-        public string DepthFirst(char node) => throw new NotImplementedException();
+        /// <summary> Perform a LIFO connectivity search. </summary>
+        /// <param name="node"> The root node to start the LIFO connectivity search from. </param>
+        /// <returns> A string representing the connectivity, starting from the root node passed in. </returns>
+        public string DepthFirst(char name)
+        {
+            ResetVisited();
+            string buffer = "";
+            bool firstNode = true;
+            Node node = NodeList[FindNode(name)];
+
+            Stack<Node> stack = new(NumNodes);
+            do
+            {
+                
+                // step 1: add the unvisited node to the buffer
+                buffer += node;
+                if (firstNode) buffer += ":";
+                buffer += " ";
+                if (firstNode) firstNode = false;
+                node.Visited = true;
+
+                //step 2: add all edges of the node to the stack
+                int index = FindNode(node.Name);
+                for (int i = 0; i < NumNodes; i++)
+                    if (AdjacencyMatrix[index, i] is true)
+                        stack.Push(NodeList[i]);
+
+                //step 3: set node equal to unvisited stack.pop
+                do
+                {
+                    node = stack.Pop();
+                } while (node.Visited && stack.Count > 0);
+            } while (stack.Count > 0);
+
+            // special case:  unreachable nodes
+            buffer += "with ";
+            foreach (var item in NodeList)
+            {
+                if (item is not null)
+                    if (!buffer.Contains(item.Name))
+                        buffer += item.Name + " ";
+            }
+            buffer += "unreachable";
+
+            return buffer;
+        }
+
 
         public string ConnectTable() => throw new NotImplementedException();
 
